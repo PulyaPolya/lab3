@@ -69,11 +69,17 @@ def generate_keys(n0,n1):
     b = generate_p(n0, n1)
     return (p,q,b)
 
-def format(n, m):
-    l = len("{0:b}".format(n))/8
-    r = generate_number([2**64, 2**65-1])
-    x = 255*2**(8*(l-8))+ m*(2**64) +r
-    return x
+def formatting(n, m):
+    bit = len("{0:b}".format(n))
+    l = math.ceil(len("{0:b}".format(n))/8)
+
+    #r = generate_number([2**63, 2**64-1])
+    r = 17633251709656066200
+    pw = 8*(l-8)
+    x = 255*(2**pw)+ m*(2**64) +r
+    x = x%n
+    correct = x > math.sqrt(n)
+    return int(x)
 
 def jacobi(a, n):
     assert (n > a > 0 and n % 2 == 1)
@@ -93,9 +99,10 @@ def jacobi(a, n):
     else:
         return 0
 
-def encrypt(x,n,b):
-    y = x*(x+b) %n
-    c1 = (x+b/2)%n
+def encrypt(m,n,b):
+    x = formatting(n, m)
+    y = (x*(x+b)) %n
+    c1 = (x+int(b/2))%n
     c1 = c1%2
     c2 =1 if jacobi(x+int(b/2),n) ==1 else 0
     return (y,c1,c2)
@@ -126,28 +133,77 @@ def ktl(s1, s2, p, q):
     return x
 
 
-
-
-
-
 def square_mod(y,p,q):
     n = p*q
     s1 = pow(y, int((p+1)/4), p)
-    t1 = pow(s1, 2, p)
     s2 =pow(y, int((q+1)/4), q)
-    t2 = pow(s2, 2, q)
     _, u,v = gcdExtended(p,q)
     x1 = ktl(s1,s2, p,q)
     x2 = ktl(p-s1,s2, p,q)
     x3 =ktl(s1,q-s2, p,q)
     x4 = ktl(p-s1,q-s2, p,q)
-    # x1 = (u*p*s1 + v*q*s2) %n
-    # x2 = (u*p*s1 - v*q*s2) %n
-    # x3 = (-u*p*s1 + v*q*s2) %n
-    # x4 = (-u*p*s1 - v*q*s2) %n
     return(x1,x2,x3,x4)
-def decrypt(y,c1,c2,b,n):
-    pass
+
+def check_c1_c2(x, c1, c2, n,b):
+    c1x = (x + int(b / 2)) % n
+    c1x = c1x % 2
+    c2x = 1 if jacobi(x + int(b / 2), n) == 1 else 0
+    if c1 == c1x and c2 == c2x:
+        return ':)'
+    else:
+        return ':('
+
+def decrypt(y,c1,c2,b,n, p,q):
+    r = square_mod((y+ int((b**2)/4)), p,q)
+    for ri in r:
+        xi = (ri - int(b/2)) %n
+        res =  check_c1_c2(xi, c1, c2, n,b)
+        if res == ':)':
+            return xi
 
 
-print(square_mod(4,19,11))
+def sign(m,  p,q):
+    x =formatting(p * q, m)
+    if jacobi(x,p) ==1 and jacobi(x,q) ==1:
+        r = square_mod(x, p,q)
+        return (m,random.choice(r))
+    else:
+        return 'choose another x'
+
+
+def verify(m,s,n):
+    x = formatting(n, m)
+    x1 = pow(s,2,n)
+    if x1 == x:
+        return 'true'
+    else:
+        return 'false'
+
+
+p = 23
+q = 19
+n = p*q
+b = 4
+m = 9
+y,c1,c2 = encrypt(m,n,b)
+print(decrypt(y,c1,c2,b,n, p,q))
+print(formatting(n,m)%n)
+#r = generate_number([2**63, 2**64-1])
+
+# m = 0xaa
+# modulus = 0x18D7B2F50DCA40E0561937466D9FB993D
+# B = 0xAA9E0A5D813E5F09FF281CFF4B35F05F
+# y, c1, c2 = encrypt(m,modulus,B)
+# print(hex(y))
+# print(c1,c2)
+# print(hex(formatting(modulus, m)))
+# n = 0x2e120fbdb44536538345cc655555e218cebd45f652a7954ffacf0ffb3e75acd6e2ba1c35deadf133350115efe74a4ecc2843d1ecd07792e1ccc63085e6b622e99
+# b = 0x3b72e9b87ff3b733a1c3489d6538f31203d8cb16f9a7d3dd3bd4da8874e30020f
+# p = 0x1e57939d2858ed470359bec519c35528120986693856517e9e2c1749affe0f96b
+# q = 0x184b3f2cecc551b18f97a788e7975c73a769dc6f9afd9f6f252d329065dc1250b
+# # p,q,b = generate_keys(2**256, 2**258)
+# # print(f'n_hex: {hex(n)[2:]}, m_hex: {hex(m)[2:]}, b_hex :{hex(b)[2:]},'
+# #       f' p_hex:{hex(p)[2:]}, q_hex:{hex(q)[2:]}')
+# cipher =0xD801C655D55A61DEC96DB0577E80284948E94E5C4DF213565BC289ED6F68B2778526095BCF7AE02B745F0F601C130F422CC13918D575BEBCECF7DB4682807CAC
+# print(decrypt(cipher,0,0,b,n, p,q))
+# print(format(n,m))
