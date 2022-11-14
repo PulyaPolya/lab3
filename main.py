@@ -188,7 +188,7 @@ m = 9
 y,c1,c2 = encrypt(m,n,b)
 print(decrypt(y,c1,c2,b,n, p,q))
 print(formatting(n,m)%n)
-#r = generate_number([2**63, 2**64-1])          aaa
+#r = generate_number([2**63, 2**64-1])          aaaaa
 
 # m = 0xaa
 # modulus = 0x18D7B2F50DCA40E0561937466D9FB993D
