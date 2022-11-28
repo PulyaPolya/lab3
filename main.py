@@ -99,17 +99,13 @@ def jacobi(a, n):
         return 0
 
 def encrypt(m,n,b):
+    two_minus = pow(2, -1, n)  # b /2
+    b_div_2 = (two_minus * b) % n
     x = formatting(n, m)
     y = (x*(x+b)) %n
-    # print(f'n: {n}')
-    # print(f'x: {x}')
-    # print(f'x +b : {x+b}')
-    # print(f'x*(x+b) : {x*(x+b)}')
-    # print(f'y: {y}')
-    # print(f'n: {n}')
-    c1 = (x+int(b/2))%n
+    c1 = (x+b_div_2)%n
     c1 = c1%2
-    c2 =1 if jacobi(x+int(b/2),n) ==1 else 0
+    c2 =1 if jacobi(x+b_div_2,n) ==1 else 0
     print(f'c1: {c1}, c2: {c2}')
     return (y,c1,c2)
 
@@ -178,12 +174,15 @@ def check_c1_c2(x, c1, c2, n,b):
         return ':('
 
 def decrypt(y,c1,c2,b,n, p,q):
-    square = y+ int((b**2)/4)
+    two_minus = pow(2, -1, n) # b /2
+    b_div_2 = (two_minus *b ) %n
+    square = y+ pow(b_div_2, 2, n)
+
     print(f'square {square}')
-    r = square_mod(square, p,q)
+    r = square_mod(square % n, p,q)
     for ri in r:
         print(f'ri**2: {pow(ri, 2,n)}')
-        xi = (ri - int(b/2)) %n
+        xi = (ri - b_div_2) %n
         res =  check_c1_c2(xi, c1, c2, n,b)
         if res == ':)':
             return xi
@@ -245,4 +244,5 @@ print(f'n_hex: {hex(n)[2:]}, m_hex: {hex(m)[2:]}, b_hex :{hex(b)[2:]},'
 y,c1,c2 = encrypt(m,n,b)
 print(decrypt(y,c1,c2,b,n, p,q))
 print(formatting(n,m)%n)
+
 
