@@ -3,6 +3,7 @@ import math
 from bitarray.util import int2ba
 import struct
 from bitarray.util import ba2int
+import tonelli as tll
 
 
 def generate_number(range):
@@ -80,12 +81,19 @@ def formatting(n, m):
     correct = x > math.sqrt(n)
     return int(x)
 
+def divide_2(p):
+    a = int2ba(p)
+    a.pop(-1)
+    i = ba2int(a)
+    return i
+
 def jacobi(a, n):
     assert (n > a > 0 and n % 2 == 1)
     t = 1
     while a != 0:
         while a % 2 == 0:
-            a /= 2
+            #a /= 2
+            a = divide_2(a)
             r = n % 8
             if r == 3 or r == 5:
                 t = -t
@@ -99,17 +107,14 @@ def jacobi(a, n):
         return 0
 
 def encrypt(m,n,b):
+    two_minus = pow(2, -1, n)  # b /2
+    b_div_2 = (two_minus * b) % n
     x = formatting(n, m)
+    print(f'x formatted {x}')
     y = (x*(x+b)) %n
-    # print(f'n: {n}')
-    # print(f'x: {x}')
-    # print(f'x +b : {x+b}')
-    # print(f'x*(x+b) : {x*(x+b)}')
-    # print(f'y: {y}')
-    # print(f'n: {n}')
-    c1 = (x+int(b/2))%n
+    c1 = (x+b_div_2)%n
     c1 = c1%2
-    c2 =1 if jacobi(x+int(b/2),n) ==1 else 0
+    c2 =1 if jacobi(x+b_div_2,n) ==1 else 0
     print(f'c1: {c1}, c2: {c2}')
     return (y,c1,c2)
 
@@ -141,31 +146,32 @@ def ktl(s1, s2, p, q):
 
 def square_mod(y,p,q):
     n = p*q
-    print(f'p: {p}, q: {q}')
-    s1 = pow(y, int((p+1)/4), p)
-    print(f'y, {y}')
-    print(f'q%4 {q%4}')
-    print(f'int((q + 1) / 4): {int((q + 1) / 4)}')
-    s2 = pow(y, int((q + 1) / 4), q)
-    print(f's2 is {s2}')
-    print(f's1**2 mod p: {pow(s1,2,p)}')
+    # print(f'p: {p}, q: {q}')
+    # s1 = pow(y, int((p+1)/4), p)
+    # print(f'y:  {y}')
+    # print(f'q%4 {q%4}')
+    # y_modq = y % q
+    # s2 = pow(y_modq, int((q + 1) / 4), q)
+    # s2_squared = pow(s2, 2, q)
+    # print(f's2 is {s2}')
+    #
+    print(f'p {p}')
+    print(f'q {q}')
+    s1 = tll.tonelli(y%p, p)
+    s2 = tll.tonelli(y%q, q)
+    print(f's1**2 mod p: {pow(s1, 2, p)}')
     print(f'y mod p: { y % p}')
     print(f's2**2 mod q: {pow(s2, 2, q)}')
-    print(f'y mod q: {y % q}')
-
+    print(f'y mod q: {y%q}')
     _, u,v = gcdExtended(p,q)
     x1 = (v*q*s1 + u*p*s2) %n
     x2 = (v*q*s1 - u*p*s2) %n
     x3 = (-v*q*s1 - u*p*s2) % n
     x4 = (-v*q*s1 + u*p*s2) % n
-    print(f'y is {y}')
-    print(f'x1**2 is {pow (x1,2,n)}')
-    print(f'x2**2 is {pow(x2, 2, n)}')
     # x1 = ktl(s1,s2, p,q)
     # x2 = ktl(p-s1,s2, p,q)
     # x3 =ktl(s1,q-s2, p,q)
     # x4 = ktl(p-s1,q-s2, p,q)
-    print(f'x1: {x1}, x2: {x2},x3: {x3}, x4: {x4}')
     return(x1,x2,x3,x4)
 
 def check_c1_c2(x, c1, c2, n,b):
@@ -173,20 +179,27 @@ def check_c1_c2(x, c1, c2, n,b):
     c1x = c1x % 2
     c2x = 1 if jacobi(x + int(b / 2), n) == 1 else 0
     if c1 == c1x and c2 == c2x:
-        return ':)'
+        return (':)', c1x, c2x)
     else:
-        return ':('
+        return (':(',c1x, c2x)
 
 def decrypt(y,c1,c2,b,n, p,q):
-    square = y+ int((b**2)/4)
+    two_minus = pow(2, -1, n) # b /2
+    b_div_2 = (two_minus *b ) %n
+    square = y+ pow(b_div_2, 2, n)
     print(f'square {square}')
     r = square_mod(square, p,q)
+    result = 0
+    arr_x= {}
     for ri in r:
-        print(f'ri**2: {pow(ri, 2,n)}')
-        xi = (ri - int(b/2)) %n
-        res =  check_c1_c2(xi, c1, c2, n,b)
+        xi = (ri - b_div_2) %n
+        res, c1x, c2x  =  check_c1_c2(xi, c1, c2, n,b)
+        arr_x[xi] = (c1x, c2x)
         if res == ':)':
-            return xi
+            #return xi
+            result = xi
+    #print(f'arr_x is {arr_x}')
+    return result
 
 
 def sign(m,  p,q):
@@ -228,10 +241,34 @@ def bit_to_byte(sequence):
 def bitfield(n):
     return [1 if digit=='1' else 0 for digit in bin(n)[2:]]
 
+def send_square_root(y, n, p,q):
+    x1, x2, x3, x4 = square_mod(y,p,q)
+    arr_x = [x1,x2,x3,x4]
+    i = 0
+    while True:
+        res_p = jacobi(arr_x[i],p)
+        res_q = jacobi(arr_x[i], q)
+        if res_p == 1 and res_q == 1:
+            return arr_x[i]
+        i += 1
 
-#p,q,b = generate_keys(2**40, 2**56)
-p = 0x946b4e797dce9f
-q = 0xc40b9c0ac0cb5b #incorrect
+
+def attack(n, p,q):
+    while True:
+        t = generate_number([1,n])
+        y = pow(t,2,n)
+        z = send_square_root(y, n, p,q)
+        if t != z and t != n -z :
+            p, _,_ =gcdExtended(t, z)
+            return p
+
+
+
+
+
+p,q,b = generate_keys(2**128, 2**129)
+# p = 0x946b4e797dce9f
+# q = 0xc40b9c0ac0cb5b  #incorrect
 # p = 0x2e02acbdaa8f  #correct
 # q = 0x1640db0a96e3
 # p =31
@@ -243,8 +280,18 @@ print(f'n_hex: {hex(n)[2:]}, m_hex: {hex(m)[2:]}, b_hex :{hex(b)[2:]},'
       f' p_hex:{hex(p)[2:]}, q_hex:{hex(q)[2:]}')
 
 y,c1,c2 = encrypt(m,n,b)
-print(decrypt(y,c1,c2,b,n, p,q))
-print(formatting(n,m)%n)
+print(f'y {hex(y)}')
+bit_y =bitfield(y)
+byte_y  = bit_to_byte(bit_y)
+joined_y =''.join(str(e) for e in byte_y)
+print(byte_y)
+print(joined_y)
+print(f'c1 {c1}, c2 {c2}')
+x = decrypt(y,c1,c2,b,n, p,q)
+print(f'x is {x}')
+fromatted_m = formatting(n,m)%n
+print(f' fromatted m {fromatted_m}' )
+
 
 
 # r = generate_number([2**63, 2**64-1])
