@@ -4,6 +4,7 @@ from bitarray.util import int2ba
 import struct
 from bitarray.util import ba2int
 import tonelli as tll
+import sys
 
 
 def generate_number(range):
@@ -70,7 +71,7 @@ def generate_keys(n0,n1):
     b = generate_p(n0, n1)
     return (p,q,b)
 
-def formatting(n, m):
+def formatting1(n, m):
     bit = len("{0:b}".format(n))
     l = math.ceil(len("{0:b}".format(n))/8)
     #r = generate_number([2**63, 2**64-1])
@@ -79,7 +80,28 @@ def formatting(n, m):
     x = 255*(2**pw)+ m*(2**64) +r
     x = x%n
     correct = x > math.sqrt(n)
+    print(correct)
     return int(x)
+
+
+def formatting(n, m):
+    bit = len("{0:b}".format(n))
+    l = math.ceil(len("{0:b}".format(n))/8)
+    l_m = math.ceil(len("{0:b}".format(m))/8)
+    #r = generate_number([2**63, 2**64-1])
+    print(l)
+    print(l_m)
+    r = 17633251709656066200
+    zeros = (l - l_m -10) *2
+    formatted = '0xff'
+    for i in range(zeros):
+        formatted += '0'
+    formatted += str(hex(m))[2:]
+    formatted += str(hex(r))[2:]
+    x = int(formatted, 16)
+    return x
+    return formatted
+
 
 def divide_2(p):
     a = int2ba(p)
@@ -146,32 +168,13 @@ def ktl(s1, s2, p, q):
 
 def square_mod(y,p,q):
     n = p*q
-    # print(f'p: {p}, q: {q}')
-    # s1 = pow(y, int((p+1)/4), p)
-    # print(f'y:  {y}')
-    # print(f'q%4 {q%4}')
-    # y_modq = y % q
-    # s2 = pow(y_modq, int((q + 1) / 4), q)
-    # s2_squared = pow(s2, 2, q)
-    # print(f's2 is {s2}')
-    #
-    print(f'p {p}')
-    print(f'q {q}')
     s1 = tll.tonelli(y%p, p)
     s2 = tll.tonelli(y%q, q)
-    print(f's1**2 mod p: {pow(s1, 2, p)}')
-    print(f'y mod p: { y % p}')
-    print(f's2**2 mod q: {pow(s2, 2, q)}')
-    print(f'y mod q: {y%q}')
     _, u,v = gcdExtended(p,q)
     x1 = (v*q*s1 + u*p*s2) %n
     x2 = (v*q*s1 - u*p*s2) %n
     x3 = (-v*q*s1 - u*p*s2) % n
     x4 = (-v*q*s1 + u*p*s2) % n
-    # x1 = ktl(s1,s2, p,q)
-    # x2 = ktl(p-s1,s2, p,q)
-    # x3 =ktl(s1,q-s2, p,q)
-    # x4 = ktl(p-s1,q-s2, p,q)
     return(x1,x2,x3,x4)
 
 def check_c1_c2(x, c1, c2, n,b):
@@ -219,8 +222,6 @@ def verify(m,s,n):
         return 'false'
 
 
-# p = 23
-
 def bit_to_byte(sequence):
     n = len(sequence)
     resulting_len = math.floor(n/8)
@@ -253,107 +254,41 @@ def send_square_root(y, n, p,q):
         i += 1
 
 
-def attack(n, p,q):
+def attack(n):
     while True:
         t = generate_number([1,n])
         y = pow(t,2,n)
-        z = send_square_root(y, n, p,q)
-        if t != z and t != n -z :
-            p, _,_ =gcdExtended(t, z)
-            return p
+        print(f'y is {hex(y)}')
+        print('please input z')
+        z = input()
+        z = int(z, 16)
+        if t != z and t != n - z:
+            p, _, _ = gcdExtended(t+z, n)
+            if p != 1:
+                print(n % p)
+                return p
+
+# sys.setrecursionlimit(2000)
+# M = 0xE1D3B2060EF04CB49F96E512E34F5EDAEE4C61837DF8E2855296E8AC723FFBC006F9CD3375A65E9ED5FE863C2DD69004F4328D00FFC39FE77B6D88A15516A1CEBBB76C825CBBAA9BB2E2AAEE80E607EAE30E22BD8EEE6F45A5B02EB7666D8811292F90E6AA2CC7D3018193323EB8C9B77D56885D0F79631566B858A0B3495A41846D3BBC93CA1F83D8452CC6B8F8F2D41A2348C48C9863D4267308D257374DED6EBADA5D02037F9AA935BEAF11D6791C8E03BF33B7B9E7433D80D0B992CA291B66581AFC29A33FB6A64DC8748D02D27D8C168CBD6DDA25FFD78F3A877254F496394E5150281DE6799C4B60DD1AECCDF4193361FC3C78D23C22C52BE312331C35
+# p = attack(M)
+# print(p)
+# t = 0x1daeb5a05741ad3769a56cc0cbf71deba19c62fe6c52c97dffad0c3b39fcf3771d2af614639775be93b51c3dea7498b3158b02614109860321b02bf4f1fa10cb9425501fa3a9f18a2dc3aafd2b8076ed9926943c8571e875da75c00ddecaa32214af9f673755e27beb43dc4b8324f30f20e37bd1cbb65d133305ba5fcf4904d7440721be9be73e889cb25c0a780fcc19ce8b35eafeb8f27f69e4c16760252e8299b2ea28dc7a66ab9df50116cdcec1485fea78b33d7edfffc987336700c56fa0a1126c3fb13a86730cc87af2985fd783277e1750043a002f444cac1182617987c06601802b2b550d9f99e08507038fb26ec4b13944f04c380c536ab7b0337fdf
+# z = 0x3870E7144B2E2A7E84EF2F3ACB28C3CAE7AB1E9B3BF65A7D6D1123CA067E2998D93EB381838356608E6D15AE5237D3B970D9AD846F9393C01E2E9752563DE75D731084ADC031B209AB0C8D67F5E7CBE003F8CCD02774C9912A4144EC0DFCE21C05BC7F5E18692A4E521894C3FAB9FEED6EB64636331A5F30275AC7B8F9E79B07160245C87D73F1CEB3EFA3062F7B017AA12A29B784A9C71D78CEA1BD708F6FA04DF1FD59FEE01EFD8F8362966ADFD435D613ABCDE04402F5A445A4DD8039C61150D6DAF4F5E06F70CB308AA33502867AA1B59D9B219BD47996251C5FCC88F22F07D9E97D15489EA997F5457C3DEE1727F16ACE2635E94D5838D5791CB8D6C0B0
+#
 
 
-
-
-
-p,q,b = generate_keys(2**128, 2**129)
-# p = 0x946b4e797dce9f
-# q = 0xc40b9c0ac0cb5b  #incorrect
-# p = 0x2e02acbdaa8f  #correct
-# q = 0x1640db0a96e3
-# p =31
-# q = 19
+p,q,b = generate_keys(2**256, 2**257)
+m = 0x12
 n = p*q
-b = 4
-m = 0xa
+#
 print(f'n_hex: {hex(n)[2:]}, m_hex: {hex(m)[2:]}, b_hex :{hex(b)[2:]},'
       f' p_hex:{hex(p)[2:]}, q_hex:{hex(q)[2:]}')
 
-y,c1,c2 = encrypt(m,n,b)
-print(f'y {hex(y)}')
-bit_y =bitfield(y)
-byte_y  = bit_to_byte(bit_y)
-joined_y =''.join(str(e) for e in byte_y)
-print(byte_y)
-print(joined_y)
-print(f'c1 {c1}, c2 {c2}')
-x = decrypt(y,c1,c2,b,n, p,q)
-print(f'x is {x}')
-fromatted_m = formatting(n,m)%n
-print(f' fromatted m {fromatted_m}' )
+
+# Modulus = 0x99FC85F0D888EDCD984A6FA2E129DE9D605778FC523C7E76F4E09BC4B16F31E5
+# B = 0x525C2034F5D7A33D6658D5FAE17A0D8F595A87676F7A96F6A35675ADFFB3E509
+# y,c1,c2 = encrypt(m, Modulus,B)
+# print(f'y: {hex(y)}, c1: {c1}, c2: {c2}')
 
 
 
-# r = generate_number([2**63, 2**64-1])
-
-#
-# # modulus = 0x18D7B2F50DCA40E0561937466D9FB993D
-# # B = 0xAA9E0A5D813E5F09FF281CFF4B35F05F
-# # y, c1, c2 = encrypt(m,modulus,B)
-# # decrypt(y,c1,c2,B,modulus, 1,2)
-# # bit_y =bitfield(y)
-# # byte_y  = bit_to_byte(bit_y)
-# # joined_y =''.join(str(e) for e in byte_y)
-# # print(byte_y)
-# # print(joined_y)
-# # print(c1,c2)
-# # print(hex(formatting(modulus, m)))
-# #n = 0x2e120fbdb44536538345cc655555e218cebd45f652a7954ffacf0ffb3e75acd6e2ba1c35deadf133350115efe74a4ecc2843d1ecd07792e1ccc63085e6b622e99
-# #b = 0x3b72e9b87ff3b733a1c3489d6538f31203d8cb16f9a7d3dd3bd4da8874e30020f
-# # b = 2
-# # p = 0x1e57939d2858ed470359bec519c35528120986693856517e9e2c1749affe0f96b
-# # q = 0x184b3f2cecc551b18f97a788e7975c73a769dc6f9afd9f6f252d329065dc1250b
-# # n = p*q
-# # p =103
-# # q = 43
-
-# p = 0x169017be4f3
-# q = 0x325fe5fdce3
-# n = p*q
-# b = 2
-# y, c1, c2 = encrypt(m,n,b)
-# x =decrypt(y,c1,c2,b,n, p,q)
-# n = p * q
-# b = 2
-#
-# # print(f'y is :{y}')
-# # print(f' x^2 is {pow(x,2,n)}')
-# desired_x = formatting(n,m)
-# print(x%n)
-# print(desired_x)
-# p,q,_ = generate_keys(2**100, 2**101)
-# for i in range(100):
-#     p,q,_ = generate_keys(2**40, 2**42)
-#     # p = 0x16088e0d90f
-#     # q = 0x1e26e51ff73
-#     n = p*q
-#     b = 2
-#
-#
-#     y, c1, c2 = encrypt(m,n,b)
-#     x =decrypt(y,c1,c2,b,n, p,q)
-#     n = p * q
-#     b = 2
-#
-#     # print(f'y is :{y}')
-#     # print(f' x^2 is {pow(x,2,n)}')
-#     desired_x = formatting(n,m)
-#     if desired_x != x:
-#         print(x)
-#         print(desired_x)
-#         print(f'n_hex: {hex(n)[2:]}, m_hex: {hex(m)[2:]}, b_hex :{hex(b)[2:]},'
-#               f' p_hex:{hex(p)[2:]}, q_hex:{hex(q)[2:]}')
-# print(root)
-# cipher =0x79CF142D313CB2501F53DC4659E654D6780DBB201BEDD7D16B1FD3C92CB8D495B35F230024E7A57F1BBFB43294CF446A20A55EF7EF89B2D590866715E9B9AF57
-# print(decrypt(cipher,1,0,b,n, p,q))
-# print(formatting(n,m))
