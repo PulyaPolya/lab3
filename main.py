@@ -88,10 +88,10 @@ def formatting(n, m):
     bit = len("{0:b}".format(n))
     l = math.ceil(len("{0:b}".format(n))/8)
     l_m = math.ceil(len("{0:b}".format(m))/8)
-    #r = generate_number([2**63, 2**64-1])
-    print(l)
-    print(l_m)
-    r = 17633251709656066200
+    r = generate_number([2**63, 2**64-1])
+    # print(l)
+    # print(l_m)
+    #r = 17633251709656066200
     zeros = (l - l_m -10) *2
     formatted = '0xff'
     for i in range(zeros):
@@ -100,7 +100,6 @@ def formatting(n, m):
     formatted += str(hex(r))[2:]
     x = int(formatted, 16)
     return x
-    return formatted
 
 
 def divide_2(p):
@@ -110,6 +109,7 @@ def divide_2(p):
     return i
 
 def jacobi(a, n):
+    a = a%n
     assert (n > a > 0 and n % 2 == 1)
     t = 1
     while a != 0:
@@ -132,11 +132,11 @@ def encrypt(m,n,b):
     two_minus = pow(2, -1, n)  # b /2
     b_div_2 = (two_minus * b) % n
     x = formatting(n, m)
-    print(f'x formatted {x}')
+    #(f'x formatted {x}')
     y = (x*(x+b)) %n
     c1 = (x+b_div_2)%n
     c1 = c1%2
-    c2 =1 if jacobi(x+b_div_2,n) ==1 else 0
+    c2 =1 if jacobi((x+b_div_2) %n,n) ==1 else 0
     print(f'c1: {c1}, c2: {c2}')
     return (y,c1,c2)
 
@@ -190,7 +190,6 @@ def decrypt(y,c1,c2,b,n, p,q):
     two_minus = pow(2, -1, n) # b /2
     b_div_2 = (two_minus *b ) %n
     square = y+ pow(b_div_2, 2, n)
-    print(f'square {square}')
     r = square_mod(square, p,q)
     result = 0
     arr_x= {}
@@ -206,20 +205,33 @@ def decrypt(y,c1,c2,b,n, p,q):
 
 
 def sign(m,  p,q):
-    x =formatting(p * q, m)
-    if jacobi(x,p) ==1 and jacobi(x,q) ==1:
-        r = square_mod(x, p,q)
-        return (m,random.choice(r))
-    else:
-        return 'choose another x'
+    while True:
+        x =formatting(p * q, m)
+        if jacobi(x,p) ==1 and jacobi(x,q) ==1:
+            r = square_mod(x, p,q)
+            return (m,random.choice(r))
+    # else:
+    #     return 'choose another x'
+
+def get_original_message(x, n):
+    s = str(hex(x))[4:]
+    s = s[:-16]
+    while s[0] == '0':
+        s = s[1:]
+    return int(s, 16)
+
+
 
 def verify(m,s,n):
-    x = formatting(n, m)
+    #x = formatting(n, m)
     x1 = pow(s,2,n)
-    if x1 == x:
-        return 'true'
+    message = get_original_message(x1, n)
+    #message = int(message, 16)
+    if message == m:
+        return ':)'
     else:
-        return 'false'
+        return ':('
+
 
 
 def bit_to_byte(sequence):
@@ -264,8 +276,8 @@ def attack(n):
         z = int(z, 16)
         if t != z and t != n - z:
             p, _, _ = gcdExtended(t+z, n)
-            if p != 1:
-                print(n % p)
+            if p != 1 and p != 0:
+                print(n %p)
                 return p
 
 # sys.setrecursionlimit(2000)
@@ -277,18 +289,36 @@ def attack(n):
 #
 
 
-p,q,b = generate_keys(2**256, 2**257)
-m = 0x12
-n = p*q
+# p,q,b = generate_keys(2**256, 2**257)
+
 #
-print(f'n_hex: {hex(n)[2:]}, m_hex: {hex(m)[2:]}, b_hex :{hex(b)[2:]},'
-      f' p_hex:{hex(p)[2:]}, q_hex:{hex(q)[2:]}')
 
+n = 0x318a0c3335dfbf788646f504965f0791d1ec3dbfd5f26b78e9a5288067a64654aac07571f262f8d6b3e97be0c1f7124d7f57488a8a13c2dc96a40959b4ed4591d
+p= 0x1ce2d8c6813bc5fbcd0a0f2fa6226486b8bb8aeac4cbefcb8f2e3f802edfd48f3
+q = 0x1b7093982101cc2452dd7480f2486877142904ce1f91087772b1ba546732159af
+m = 0x12
+m1 = 0xABCDEF12345
+n = p*q
+b = 4
+Modulus = 0x99FC85F0D888EDCD984A6FA2E129DE9D605778FC523C7E76F4E09BC4B16F31E5
+B = 0x525C2034F5D7A33D6658D5FAE17A0D8F595A87676F7A96F6A35675ADFFB3E509
+m_f = formatting(Modulus, m)
 
-# Modulus = 0x99FC85F0D888EDCD984A6FA2E129DE9D605778FC523C7E76F4E09BC4B16F31E5
-# B = 0x525C2034F5D7A33D6658D5FAE17A0D8F595A87676F7A96F6A35675ADFFB3E509
-# y,c1,c2 = encrypt(m, Modulus,B)
-# print(f'y: {hex(y)}, c1: {c1}, c2: {c2}')
-
-
-
+y,c1,c2 = encrypt(m1, Modulus,B)
+print(f'y: {hex(y)}, c1: {c1}, c2: {c2}')
+# print(f'formatted_message{hex(formatting(Modulus, m))}')
+# print(f'n_hex: {hex(n)[2:]}, m_hex: {hex(m)[2:]}, b_hex :{hex(b)[2:]},'
+#       f' p_hex:{hex(p)[2:]}, q_hex:{hex(q)[2:]}')
+#
+# m, signature = sign(m,  p,q)
+# print(hex(m), hex(signature))
+# s = 0x37FFFFDF6A745E0B0A2C7A50A3F8C3EAF18BDBF0138076C66A13085F23C6BFA8
+# print(verify(m, s, Modulus))
+# c = 0x02FE0A21B0F27CABE52EF52726A501031CFEC3D856A4ECD8E2BEDCC8046E6348F47CB6F7C2C67DA44D36AB7F53520FDF1ABC0F2921E54974224212DDFF484B70F8
+# c1 = 1
+# c2 = 1
+# form_message =decrypt(c,c1,c2,b,n,p,q)
+# message = get_original_message(form_message, n)
+# print(hex(message))
+# mod = 0xBE131D0D88854553237DD4D5F04FAEB4A15A5CE42B4F5435249D6614EF62C7DE063047AC1A8E9C2AFA47285C46EAD7B6574C8A728B9428C5DA3A92A4EF8378B4832138028949B75EC0211DBBB9E2334D8A5DF29DA33DA281A96C3D2758316F0A0221BBBA5FF5B44F574B705691D0BEF06A43BB5B7DAB732BDE225F2559AC52B6BC942AF06344742D25499A47094EFB9C1EABF24FD1365B5EECF7CA93548D33F16BD586E623C6D2615B85D3B669A7A7947D8FFE95EAB8F9F8A12840CD739555C15FC2F180DF73547805D751CBA6FC987E13C8ECB3DFA12E1878E5CFBC28A58FA58EDCEFE3E893E0809004930606B9CE222065F892489BC9A61E7AD762A4BC96D9
+# print(hex(attack(mod)))
